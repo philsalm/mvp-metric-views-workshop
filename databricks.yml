@@ -1,0 +1,52 @@
+# Databricks Asset Bundle — Unity Catalog Metric Views Workshop
+#
+# Deploys the workshop setup notebook and a job that provisions the synthetic
+# HEDIS-style data + (optionally) the reference metric view in your workspace.
+#
+# Quickstart:
+#   1. Install the Databricks CLI and authenticate:  databricks auth login --host https://<your-workspace>
+#   2. Edit the `dev` target host below (and override --var catalog/schema if needed).
+#   3. databricks bundle deploy --target dev
+#   4. databricks bundle run mvp_quality_workshop_setup --target dev
+#
+# All generated data is synthetic — it contains no real members, providers, or claims.
+
+bundle:
+  name: mvp-metric-views-workshop
+
+variables:
+  catalog:
+    description: "Target Unity Catalog catalog. Must already exist, or be creatable with Default Storage / a managed location."
+    default: main
+  schema:
+    description: "Target schema for the workshop tables + metric view."
+    default: mvp_quality_workshop
+  create_metric_view:
+    description: "Create the finished reference metric view? Set to 'false' so attendees build it from scratch during the workshop."
+    default: "true"
+  n_members:
+    description: "Number of synthetic members to generate."
+    default: "20000"
+
+resources:
+  jobs:
+    mvp_quality_workshop_setup:
+      name: "Metric Views Workshop - Data Setup"
+      tasks:
+        - task_key: setup
+          notebook_task:
+            notebook_path: ./notebooks/00_setup_quality_data.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema}
+              create_metric_view: ${var.create_metric_view}
+              n_members: ${var.n_members}
+          # No job_cluster / new_cluster specified -> runs on serverless compute.
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      # Set this to your own workspace before deploying.
+      host: https://CHANGE-ME.azuredatabricks.net
