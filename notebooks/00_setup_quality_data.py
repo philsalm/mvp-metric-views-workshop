@@ -248,48 +248,65 @@ joins:
     on: source.pcp_provider_id = prov.provider_id
 
 fields:
-  - name: Measurement Year
+  - name: measurement_year
+    display_name: "Measurement Year"
     expr: measurement_year
-  - name: Measure
+  - name: measure_name
+    display_name: "Measure"
     expr: meas.measure_name
     synonyms: ["quality measure", "HEDIS measure"]
-  - name: Measure Code
+  - name: measure_code
+    display_name: "Measure Code"
     expr: meas.measure_id
-  - name: Quality Domain
+  - name: quality_domain
+    display_name: "Quality Domain"
     expr: meas.domain
     synonyms: ["domain", "measure category"]
-  - name: Line of Business
+  - name: line_of_business
+    display_name: "Line of Business"
     expr: mbr.line_of_business
     synonyms: ["LOB", "product line"]
-  - name: Region
+  - name: region
+    display_name: "Region"
     expr: mbr.region
-  - name: Age Band
+  - name: age_band
+    display_name: "Age Band"
     expr: mbr.age_band
-  - name: Plan
+  - name: plan_name
+    display_name: "Plan"
     expr: pln.plan_name
-  - name: Plan Type
+  - name: plan_type
+    display_name: "Plan Type"
     expr: pln.plan_type
-  - name: PCP Specialty
+  - name: pcp_specialty
+    display_name: "PCP Specialty"
     expr: prov.specialty
-  - name: Network Status
+  - name: network_status
+    display_name: "Network Status"
     expr: prov.network_status
 
 measures:
-  - name: Eligible Members
+  - name: eligible_members
+    display_name: "Eligible Members"
     expr: COUNT(1)
     synonyms: ["denominator", "eligible population"]
-  - name: Compliant Members
+  - name: compliant_members
+    display_name: "Compliant Members"
     expr: SUM(compliant_flag)
     synonyms: ["numerator", "members meeting the measure"]
-  - name: Open Care Gaps
+  - name: open_care_gaps
+    display_name: "Open Care Gaps"
     expr: SUM(1 - compliant_flag)
     synonyms: ["gaps", "open gaps", "care gaps"]
-  - name: Compliance Rate
+  - name: compliance_rate
+    display_name: "Compliance Rate"
     expr: SUM(compliant_flag) / COUNT(1)
     synonyms: ["HEDIS rate", "quality rate", "screening rate", "measure rate"]
-  - name: Gap Rate
+  - name: gap_rate
+    display_name: "Gap Rate"
     expr: 1 - (SUM(compliant_flag) / COUNT(1))
-  - name: Members With Open Gaps
+  - name: members_with_open_gaps
+    display_name: "Members With Open Gaps"
     expr: COUNT(DISTINCT CASE WHEN compliant_flag = 0 THEN member_id END)
 $$
 """
@@ -306,14 +323,14 @@ else:
 
 if CREATE_MV:
     display(spark.sql(f"""
-        SELECT `Line of Business`,
-               MEASURE(`Eligible Members`)  AS eligible,
-               MEASURE(`Compliant Members`) AS compliant,
-               MEASURE(`Open Care Gaps`)    AS open_gaps,
-               ROUND(MEASURE(`Compliance Rate`) * 100, 1) AS compliance_rate_pct
+        SELECT line_of_business,
+               MEASURE(eligible_members)  AS eligible,
+               MEASURE(compliant_members) AS compliant,
+               MEASURE(open_care_gaps)    AS open_gaps,
+               ROUND(MEASURE(compliance_rate) * 100, 1) AS compliance_rate_pct
         FROM {CATALOG}.{SCHEMA}.quality_measures_mv
-        WHERE `Measurement Year` = 2025
-        GROUP BY `Line of Business`
+        WHERE measurement_year = 2025
+        GROUP BY line_of_business
         ORDER BY compliance_rate_pct DESC
     """))
 else:

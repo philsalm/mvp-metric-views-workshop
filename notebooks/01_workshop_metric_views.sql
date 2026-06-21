@@ -29,9 +29,10 @@ CREATE WIDGET TEXT your_name DEFAULT 'me';
 
 -- COMMAND ----------
 
+-- DBTITLE 1,Cell 4
 -- Confirm the parameters resolve and the data is reachable.
 SELECT '${catalog}.${schema}' AS workshop_location,
-       COUNT(*)               AS eligible_member_measures
+       COUNT(*)                AS eligible_member_measures
 FROM ${catalog}.${schema}.fact_measure_compliance;
 
 -- COMMAND ----------
@@ -131,29 +132,34 @@ version: 1.1
 comment: "My first quality metric view"
 source: ${catalog}.${schema}.fact_measure_compliance
 fields:
-  - name: Measurement Year
+  - name: measurement_year
+    display_name: "Measurement Year"
     expr: measurement_year
-  - name: Measure Code
+  - name: measure_code
+    display_name: "Measure Code"
     expr: measure_id
 measures:
-  - name: Eligible Members
+  - name: eligible_members
+    display_name: "Eligible Members"
     expr: COUNT(1)
-  - name: Compliant Members
+  - name: compliant_members
+    display_name: "Compliant Members"
     expr: SUM(compliant_flag)
-  - name: Compliance Rate
+  - name: compliance_rate
+    display_name: "Compliance Rate"
     expr: SUM(compliant_flag) / COUNT(1)
 $$;
 
 -- COMMAND ----------
 
 -- Query it — note that measures must be wrapped in MEASURE()
-SELECT `Measure Code`,
-       MEASURE(`Eligible Members`)  AS eligible,
-       MEASURE(`Compliant Members`) AS compliant,
-       ROUND(MEASURE(`Compliance Rate`) * 100, 1) AS rate_pct
+SELECT measure_code,
+       MEASURE(eligible_members)  AS eligible,
+       MEASURE(compliant_members) AS compliant,
+       ROUND(MEASURE(compliance_rate) * 100, 1) AS rate_pct
 FROM ${catalog}.${schema}.quality_mv_${your_name}
-WHERE `Measurement Year` = 2025
-GROUP BY `Measure Code`
+WHERE measurement_year = 2025
+GROUP BY measure_code
 ORDER BY rate_pct;
 
 -- COMMAND ----------
@@ -191,36 +197,45 @@ joins:
     source: ${catalog}.${schema}.dim_measure
     on: source.measure_id = meas.measure_id
 fields:
-  - name: Measurement Year
+  - name: measurement_year
+    display_name: "Measurement Year"
     expr: measurement_year
-  - name: Measure
+  - name: measure_name
+    display_name: "Measure"
     expr: meas.measure_name
-  - name: Quality Domain
+  - name: quality_domain
+    display_name: "Quality Domain"
     expr: meas.domain
-  - name: Line of Business
+  - name: line_of_business
+    display_name: "Line of Business"
     expr: mbr.line_of_business
-  - name: Region
+  - name: region
+    display_name: "Region"
     expr: mbr.region
-  - name: Plan Type
+  - name: plan_type
+    display_name: "Plan Type"
     expr: pln.plan_type
 measures:
-  - name: Eligible Members
+  - name: eligible_members
+    display_name: "Eligible Members"
     expr: COUNT(1)
-  - name: Compliant Members
+  - name: compliant_members
+    display_name: "Compliant Members"
     expr: SUM(compliant_flag)
-  - name: Compliance Rate
+  - name: compliance_rate
+    display_name: "Compliance Rate"
     expr: SUM(compliant_flag) / COUNT(1)
 $$;
 
 -- COMMAND ----------
 
 -- Slice the same Compliance Rate measure by line of business — no measure rewrite needed
-SELECT `Line of Business`,
-       MEASURE(`Eligible Members`) AS eligible,
-       ROUND(MEASURE(`Compliance Rate`) * 100, 1) AS rate_pct
+SELECT line_of_business,
+       MEASURE(eligible_members) AS eligible,
+       ROUND(MEASURE(compliance_rate) * 100, 1) AS rate_pct
 FROM ${catalog}.${schema}.quality_mv_${your_name}
-WHERE `Measurement Year` = 2025
-GROUP BY `Line of Business`
+WHERE measurement_year = 2025
+GROUP BY line_of_business
 ORDER BY rate_pct DESC;
 
 -- COMMAND ----------
@@ -248,52 +263,64 @@ joins:
     source: ${catalog}.${schema}.dim_measure
     on: source.measure_id = meas.measure_id
 fields:
-  - name: Measurement Year
+  - name: measurement_year
+    display_name: "Measurement Year"
     expr: measurement_year
-  - name: Measure
+  - name: measure_name
+    display_name: "Measure"
     expr: meas.measure_name
-  - name: Quality Domain
+  - name: quality_domain
+    display_name: "Quality Domain"
     expr: meas.domain
-  - name: Line of Business
+  - name: line_of_business
+    display_name: "Line of Business"
     expr: mbr.line_of_business
-  - name: Region
+  - name: region
+    display_name: "Region"
     expr: mbr.region
-  - name: Plan Type
+  - name: plan_type
+    display_name: "Plan Type"
     expr: pln.plan_type
 measures:
-  - name: Eligible Members
+  - name: eligible_members
+    display_name: "Eligible Members"
     expr: COUNT(1)
-  - name: Compliant Members
+  - name: compliant_members
+    display_name: "Compliant Members"
     expr: SUM(compliant_flag)
-  - name: Compliance Rate
+  - name: compliance_rate
+    display_name: "Compliance Rate"
     expr: SUM(compliant_flag) / COUNT(1)
-  - name: Open Care Gaps
+  - name: open_care_gaps
+    display_name: "Open Care Gaps"
     expr: SUM(1 - compliant_flag)
-  - name: Gap Rate
+  - name: gap_rate
+    display_name: "Gap Rate"
     expr: 1 - (SUM(compliant_flag) / COUNT(1))
-  - name: Members With Open Gaps
+  - name: members_with_open_gaps
+    display_name: "Members With Open Gaps"
     expr: COUNT(DISTINCT CASE WHEN compliant_flag = 0 THEN member_id END)
 $$;
 
 -- COMMAND ----------
 
 -- Worst-performing measures in 2025
-SELECT `Measure`,
-       ROUND(MEASURE(`Compliance Rate`) * 100, 1) AS rate_pct,
-       MEASURE(`Open Care Gaps`) AS open_gaps
+SELECT measure_name,
+       ROUND(MEASURE(compliance_rate) * 100, 1) AS rate_pct,
+       MEASURE(open_care_gaps) AS open_gaps
 FROM ${catalog}.${schema}.quality_mv_${your_name}
-WHERE `Measurement Year` = 2025
-GROUP BY `Measure`
+WHERE measurement_year = 2025
+GROUP BY measure_name
 ORDER BY rate_pct;
 
 -- COMMAND ----------
 
 -- Year-over-year movement by domain
-SELECT `Quality Domain`, `Measurement Year`,
-       ROUND(MEASURE(`Compliance Rate`) * 100, 1) AS rate_pct
+SELECT quality_domain, measurement_year,
+       ROUND(MEASURE(compliance_rate) * 100, 1) AS rate_pct
 FROM ${catalog}.${schema}.quality_mv_${your_name}
-GROUP BY `Quality Domain`, `Measurement Year`
-ORDER BY `Quality Domain`, `Measurement Year`;
+GROUP BY quality_domain, measurement_year
+ORDER BY quality_domain, measurement_year;
 
 -- COMMAND ----------
 
@@ -324,39 +351,284 @@ joins:
     source: ${catalog}.${schema}.dim_measure
     on: source.measure_id = meas.measure_id
 fields:
-  - name: Measurement Year
+  - name: measurement_year
+    display_name: "Measurement Year"
     expr: measurement_year
-  - name: Measure
+  - name: measure_name
+    display_name: "Measure"
     expr: meas.measure_name
     synonyms: ["quality measure", "HEDIS measure"]
-  - name: Quality Domain
+  - name: quality_domain
+    display_name: "Quality Domain"
     expr: meas.domain
     synonyms: ["domain", "measure category"]
-  - name: Line of Business
+  - name: line_of_business
+    display_name: "Line of Business"
     expr: mbr.line_of_business
     synonyms: ["LOB", "product line"]
-  - name: Region
+  - name: region
+    display_name: "Region"
     expr: mbr.region
-  - name: Plan Type
+  - name: plan_type
+    display_name: "Plan Type"
     expr: pln.plan_type
 measures:
-  - name: Eligible Members
+  - name: eligible_members
+    display_name: "Eligible Members"
     expr: COUNT(1)
     synonyms: ["denominator", "eligible population"]
-  - name: Compliant Members
+  - name: compliant_members
+    display_name: "Compliant Members"
     expr: SUM(compliant_flag)
     synonyms: ["numerator", "members meeting the measure"]
-  - name: Compliance Rate
+  - name: compliance_rate
+    display_name: "Compliance Rate"
     expr: SUM(compliant_flag) / COUNT(1)
     synonyms: ["HEDIS rate", "quality rate", "screening rate", "measure rate"]
-  - name: Open Care Gaps
+  - name: open_care_gaps
+    display_name: "Open Care Gaps"
     expr: SUM(1 - compliant_flag)
     synonyms: ["gaps", "open gaps", "care gaps"]
-  - name: Gap Rate
+  - name: gap_rate
+    display_name: "Gap Rate"
     expr: 1 - (SUM(compliant_flag) / COUNT(1))
-  - name: Members With Open Gaps
+  - name: members_with_open_gaps
+    display_name: "Members With Open Gaps"
     expr: COUNT(DISTINCT CASE WHEN compliant_flag = 0 THEN member_id END)
 $$;
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ### Exercise 6 — Filters: bake them into the metric (10 min)
+-- MAGIC Metric views give you **three** places to filter, and they solve different problems:
+-- MAGIC
+-- MAGIC | Where | YAML / SQL | Use it for |
+-- MAGIC |---|---|---|
+-- MAGIC | **View-level** | `filter:` (top of the YAML) | An always-on guardrail applied to *every* query — e.g. "only ever count the eligible population." |
+-- MAGIC | **Measure-level** | `expr: ... FILTER (WHERE ...)` | A measure scoped to a sub-population, so you can compare a segment against the all-up number **side by side in one query**. |
+-- MAGIC | **Query-level** | `WHERE` in your `SELECT` | An ad-hoc slice for one question (what every cell above has used). |
+-- MAGIC
+-- MAGIC Below we add the first two. The view-level `filter: eligible_flag = 1` is a guardrail: our fact is already at the
+-- MAGIC eligible grain so it changes no numbers today, but it **documents and enforces the denominator** — the moment a
+-- MAGIC non-eligible row appears, the HEDIS rate stays correct. The measure-level `FILTER (WHERE ...)` lets us define a
+-- MAGIC Medicare-Advantage-only numerator and rate that sit *next to* the all-LOB rate — something a single query `WHERE`
+-- MAGIC can't do, because `WHERE` would scope the whole row set.
+
+-- COMMAND ----------
+
+CREATE OR REPLACE VIEW ${catalog}.${schema}.quality_mv_${your_name}
+WITH METRICS LANGUAGE YAML AS
+$$
+version: 1.1
+source: ${catalog}.${schema}.fact_measure_compliance
+filter: eligible_flag = 1
+joins:
+  - name: mbr
+    source: ${catalog}.${schema}.dim_member
+    on: source.member_id = mbr.member_id
+  - name: pln
+    source: ${catalog}.${schema}.dim_plan
+    on: source.plan_id = pln.plan_id
+  - name: meas
+    source: ${catalog}.${schema}.dim_measure
+    on: source.measure_id = meas.measure_id
+fields:
+  - name: measurement_year
+    display_name: "Measurement Year"
+    expr: measurement_year
+  - name: measure_name
+    display_name: "Measure"
+    expr: meas.measure_name
+  - name: quality_domain
+    display_name: "Quality Domain"
+    expr: meas.domain
+  - name: line_of_business
+    display_name: "Line of Business"
+    expr: mbr.line_of_business
+  - name: region
+    display_name: "Region"
+    expr: mbr.region
+  - name: plan_type
+    display_name: "Plan Type"
+    expr: pln.plan_type
+measures:
+  - name: eligible_members
+    display_name: "Eligible Members"
+    expr: COUNT(1)
+  - name: compliant_members
+    display_name: "Compliant Members"
+    expr: SUM(compliant_flag)
+  - name: compliance_rate
+    display_name: "Compliance Rate"
+    expr: SUM(compliant_flag) / COUNT(1)
+  - name: open_care_gaps
+    display_name: "Open Care Gaps"
+    expr: SUM(1 - compliant_flag)
+  # Measure-level filters — a numerator and rate scoped to Medicare Advantage only.
+  - name: medicare_adv_eligible_members
+    display_name: "Medicare Adv Eligible Members"
+    expr: COUNT(1) FILTER (WHERE mbr.line_of_business = 'Medicare Advantage')
+  - name: medicare_adv_compliance_rate
+    display_name: "Medicare Adv Compliance Rate"
+    expr: SUM(compliant_flag) FILTER (WHERE mbr.line_of_business = 'Medicare Advantage')
+        / COUNT(1) FILTER (WHERE mbr.line_of_business = 'Medicare Advantage')
+$$;
+
+-- COMMAND ----------
+
+-- Compare the all-LOB rate against the Medicare Advantage rate, side by side, in ONE query.
+-- (A NULL Medicare Adv rate = no MA members are eligible for that measure, e.g. the pediatric measures.)
+SELECT measure_name,
+       ROUND(MEASURE(compliance_rate) * 100, 1)             AS all_lob_pct,
+       ROUND(MEASURE(medicare_adv_compliance_rate) * 100, 1) AS medicare_adv_pct,
+       MEASURE(medicare_adv_eligible_members)                AS medicare_adv_eligible
+FROM ${catalog}.${schema}.quality_mv_${your_name}
+WHERE measurement_year = 2025
+GROUP BY measure_name
+ORDER BY all_lob_pct;
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC The view-level `filter` and the measure-level `FILTER (WHERE ...)` are now part of the governed definition —
+-- MAGIC every tool that reads this metric view gets the same guardrail and the same segment logic, with no copy-paste.
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC ### Exercise 7 — Window functions: trends, ranking, and running totals (10 min)
+-- MAGIC "How did the rate move year over year?" and "rank our measures worst-to-best" are **window** questions. There
+-- MAGIC are two ways to answer them, and you'll use both:
+-- MAGIC
+-- MAGIC **A. SQL window functions over the metric view (portable — runs on any DBR that supports metric views).**
+-- MAGIC Aggregate with `MEASURE()` in a CTE, then apply `LAG`, `RANK`, `PERCENT_RANK`, `SUM() OVER (...)` in the outer
+-- MAGIC query. The metric view still owns the *math*; the window function just arranges the already-correct results.
+
+-- COMMAND ----------
+
+-- Year-over-year change in compliance rate, per measure, using LAG()
+WITH by_year AS (
+  SELECT measure_name,
+         measurement_year             AS yr,
+         MEASURE(compliance_rate)     AS rate
+  FROM ${catalog}.${schema}.quality_mv_${your_name}
+  GROUP BY measure_name, measurement_year
+)
+SELECT measure_name, yr,
+       ROUND(rate * 100, 1)                                                                       AS rate_pct,
+       ROUND((rate - LAG(rate) OVER (PARTITION BY measure_name ORDER BY yr)) * 100, 1)               AS yoy_change_pts
+FROM by_year
+ORDER BY measure_name, yr;
+
+-- COMMAND ----------
+
+-- Rank the 2025 measures worst-to-best, and show each measure's percentile — classic gap-prioritization
+WITH by_measure AS (
+  SELECT measure_name,
+         MEASURE(compliance_rate) AS rate,
+         MEASURE(open_care_gaps)  AS open_gaps
+  FROM ${catalog}.${schema}.quality_mv_${your_name}
+  WHERE measurement_year = 2025
+  GROUP BY measure_name
+)
+SELECT measure_name,
+       ROUND(rate * 100, 1)                          AS rate_pct,
+       open_gaps,
+       RANK()         OVER (ORDER BY rate ASC)        AS worst_first_rank,
+       ROUND(PERCENT_RANK() OVER (ORDER BY rate), 2)  AS pctile
+FROM by_measure
+ORDER BY worst_first_rank;
+
+-- COMMAND ----------
+
+-- MAGIC %md
+-- MAGIC **B. Native window measures (Experimental) — push the windowing *into* the semantic layer.**
+-- MAGIC A measure can carry a `window` spec (`order`, `range`, `semiadditive`) so running totals and moving windows are
+-- MAGIC defined once and reused everywhere — Genie and AI/BI get them for free. Below we add a **cumulative** running
+-- MAGIC total of open care gaps, ordered by `Measurement Year`.
+-- MAGIC
+-- MAGIC > ⚠️ **Experimental + runtime note.** Window measures are an Experimental feature. Basic ranges (`cumulative`,
+-- MAGIC > `current`) work on the workshop runtime; period-over-period via the `offset` modifier and `trailing N <unit>`
+-- MAGIC > windows need **DBR 18.1+** *and* a date/timestamp `order` field (our `measurement_year` is an integer year).
+-- MAGIC > For YoY on this data, prefer the portable `LAG()` query in Part A.
+
+-- COMMAND ----------
+
+CREATE OR REPLACE VIEW ${catalog}.${schema}.quality_mv_${your_name}
+WITH METRICS LANGUAGE YAML AS
+$$
+version: 1.1
+source: ${catalog}.${schema}.fact_measure_compliance
+filter: eligible_flag = 1
+joins:
+  - name: mbr
+    source: ${catalog}.${schema}.dim_member
+    on: source.member_id = mbr.member_id
+  - name: pln
+    source: ${catalog}.${schema}.dim_plan
+    on: source.plan_id = pln.plan_id
+  - name: meas
+    source: ${catalog}.${schema}.dim_measure
+    on: source.measure_id = meas.measure_id
+fields:
+  - name: measurement_year
+    display_name: "Measurement Year"
+    expr: measurement_year
+  - name: measure_name
+    display_name: "Measure"
+    expr: meas.measure_name
+  - name: quality_domain
+    display_name: "Quality Domain"
+    expr: meas.domain
+  - name: line_of_business
+    display_name: "Line of Business"
+    expr: mbr.line_of_business
+  - name: region
+    display_name: "Region"
+    expr: mbr.region
+  - name: plan_type
+    display_name: "Plan Type"
+    expr: pln.plan_type
+measures:
+  - name: eligible_members
+    display_name: "Eligible Members"
+    expr: COUNT(1)
+  - name: compliant_members
+    display_name: "Compliant Members"
+    expr: SUM(compliant_flag)
+  - name: compliance_rate
+    display_name: "Compliance Rate"
+    expr: SUM(compliant_flag) / COUNT(1)
+  - name: open_care_gaps
+    display_name: "Open Care Gaps"
+    expr: SUM(1 - compliant_flag)
+  - name: medicare_adv_eligible_members
+    display_name: "Medicare Adv Eligible Members"
+    expr: COUNT(1) FILTER (WHERE mbr.line_of_business = 'Medicare Advantage')
+  - name: medicare_adv_compliance_rate
+    display_name: "Medicare Adv Compliance Rate"
+    expr: SUM(compliant_flag) FILTER (WHERE mbr.line_of_business = 'Medicare Advantage')
+        / COUNT(1) FILTER (WHERE mbr.line_of_business = 'Medicare Advantage')
+  # Window measure — cumulative running total of open care gaps across measurement years.
+  - name: cumulative_open_care_gaps
+    display_name: "Cumulative Open Care Gaps"
+    expr: SUM(1 - compliant_flag)
+    window:
+      - order: measurement_year
+        range: cumulative
+        semiadditive: last
+$$;
+
+-- COMMAND ----------
+
+-- Per-year gaps vs the running cumulative total — the window measure does the running sum for you.
+SELECT measurement_year,
+       MEASURE(open_care_gaps)            AS gaps_this_year,
+       MEASURE(cumulative_open_care_gaps) AS cumulative_gaps
+FROM ${catalog}.${schema}.quality_mv_${your_name}
+GROUP BY measurement_year
+ORDER BY measurement_year;
 
 -- COMMAND ----------
 
@@ -434,47 +706,64 @@ joins:
     source: ${catalog}.${schema}.dim_provider
     on: source.pcp_provider_id = prov.provider_id
 fields:
-  - name: Measurement Year
+  - name: measurement_year
+    display_name: "Measurement Year"
     expr: measurement_year
-  - name: Measure
+  - name: measure_name
+    display_name: "Measure"
     expr: meas.measure_name
     synonyms: ["quality measure", "HEDIS measure"]
-  - name: Measure Code
+  - name: measure_code
+    display_name: "Measure Code"
     expr: meas.measure_id
-  - name: Quality Domain
+  - name: quality_domain
+    display_name: "Quality Domain"
     expr: meas.domain
     synonyms: ["domain", "measure category"]
-  - name: Line of Business
+  - name: line_of_business
+    display_name: "Line of Business"
     expr: mbr.line_of_business
     synonyms: ["LOB", "product line"]
-  - name: Region
+  - name: region
+    display_name: "Region"
     expr: mbr.region
-  - name: Age Band
+  - name: age_band
+    display_name: "Age Band"
     expr: mbr.age_band
-  - name: Plan
+  - name: plan_name
+    display_name: "Plan"
     expr: pln.plan_name
-  - name: Plan Type
+  - name: plan_type
+    display_name: "Plan Type"
     expr: pln.plan_type
-  - name: PCP Specialty
+  - name: pcp_specialty
+    display_name: "PCP Specialty"
     expr: prov.specialty
-  - name: Network Status
+  - name: network_status
+    display_name: "Network Status"
     expr: prov.network_status
 measures:
-  - name: Eligible Members
+  - name: eligible_members
+    display_name: "Eligible Members"
     expr: COUNT(1)
     synonyms: ["denominator", "eligible population"]
-  - name: Compliant Members
+  - name: compliant_members
+    display_name: "Compliant Members"
     expr: SUM(compliant_flag)
     synonyms: ["numerator", "members meeting the measure"]
-  - name: Open Care Gaps
+  - name: open_care_gaps
+    display_name: "Open Care Gaps"
     expr: SUM(1 - compliant_flag)
     synonyms: ["gaps", "open gaps", "care gaps"]
-  - name: Compliance Rate
+  - name: compliance_rate
+    display_name: "Compliance Rate"
     expr: SUM(compliant_flag) / COUNT(1)
     synonyms: ["HEDIS rate", "quality rate", "screening rate", "measure rate"]
-  - name: Gap Rate
+  - name: gap_rate
+    display_name: "Gap Rate"
     expr: 1 - (SUM(compliant_flag) / COUNT(1))
-  - name: Members With Open Gaps
+  - name: members_with_open_gaps
+    display_name: "Members With Open Gaps"
     expr: COUNT(DISTINCT CASE WHEN compliant_flag = 0 THEN member_id END)
 $$;
 
