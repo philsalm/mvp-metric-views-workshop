@@ -12,8 +12,9 @@ health-plan quality dataset. Attendees build a HEDIS-style quality metric view, 
 | Path | What it is | Who runs it |
 |---|---|---|
 | `notebooks/00_setup_quality_data.py` | Generates the synthetic star schema (`dim_*`, `fact_measure_compliance`) and, optionally, the reference metric view. | **Admin / facilitator**, once |
-| `notebooks/01_workshop_metric_views.sql` | The hands-on workshop. Five exercises building a metric view, plus consume + brainstorm sections. | **Each attendee** |
-| `databricks.yml` | Optional Databricks Asset Bundle to deploy the setup notebook as a job. | Admin (optional) |
+| `notebooks/01_workshop_metric_views.sql` | The hands-on workshop. Seven exercises building a metric view (incl. filters and window functions), plus consume + brainstorm sections. | **Each attendee** |
+| `dashboards/mvp_quality_measures.lvdash.json` | Reference AI/BI dashboard on `quality_measures_mv` (compliance rate, open care gaps, YoY by domain). | Admin (optional) |
+| `databricks.yml` | Optional Databricks Asset Bundle to deploy the setup notebook (job) and the dashboard. | Admin (optional) |
 
 ## Prerequisites
 
@@ -74,5 +75,6 @@ Care Gaps** for the non-compliant eligible members.
 |---|---|
 | `INVALID_EXTRACT_BASE_FIELD_TYPE … got STRING` | A join alias collides with a reserved word (e.g. `measure`, `plan`). Use `meas`, `pln`. |
 | `MEASURE function can only be used with a metric view` | Only measures defined in a metric view go inside `MEASURE()`; fields are selected directly. |
+| `[UNRESOLVED_COLUMN]` when querying a field/measure | SQL must reference the field/measure **`name`** (snake_case, e.g. `compliance_rate`), not its `display_name` (e.g. `Compliance Rate`). Display names are labels for AI/BI and Genie only. |
 | Metric view won't create | Warehouse must be on **DBR 17.3+**; you need `USE CATALOG`, `USE SCHEMA`, and `CREATE TABLE`. |
 | `Table or view not found` | Check the `catalog` / `schema` widgets and confirm the setup notebook has been run. |

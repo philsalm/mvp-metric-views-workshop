@@ -1,0 +1,654 @@
+{
+  "datasets": [
+    {
+      "name": "ds_kpi",
+      "displayName": "KPI Components",
+      "queryLines": [
+        "SELECT `measurement_year`, `line_of_business`, MEASURE(`compliant_members`) AS compliant_members, MEASURE(`eligible_members`) AS eligible_members, MEASURE(`open_care_gaps`) AS open_care_gaps FROM ai_dev_kit_demo_3_catalog.mvp_quality_workshop.quality_measures_mv GROUP BY `measurement_year`, `line_of_business` "
+      ]
+    },
+    {
+      "name": "ds_by_measure",
+      "displayName": "Compliance by Measure",
+      "queryLines": [
+        "SELECT `measurement_year`, `line_of_business`, `measure_name`, MEASURE(`compliance_rate`)*100 AS compliance_rate_pct FROM ai_dev_kit_demo_3_catalog.mvp_quality_workshop.quality_measures_mv GROUP BY `measurement_year`, `line_of_business`, `measure_name` "
+      ]
+    },
+    {
+      "name": "ds_by_lob",
+      "displayName": "Compliance by Line of Business",
+      "queryLines": [
+        "SELECT `measurement_year`, `line_of_business`, MEASURE(`compliance_rate`)*100 AS compliance_rate_pct FROM ai_dev_kit_demo_3_catalog.mvp_quality_workshop.quality_measures_mv GROUP BY `measurement_year`, `line_of_business` "
+      ]
+    },
+    {
+      "name": "ds_by_region",
+      "displayName": "Open Care Gaps by Region",
+      "queryLines": [
+        "SELECT `measurement_year`, `line_of_business`, `region`, MEASURE(`open_care_gaps`) AS open_care_gaps FROM ai_dev_kit_demo_3_catalog.mvp_quality_workshop.quality_measures_mv GROUP BY `measurement_year`, `line_of_business`, `region` "
+      ]
+    },
+    {
+      "name": "ds_yoy",
+      "displayName": "Compliance YoY by Quality Domain",
+      "queryLines": [
+        "SELECT `measurement_year`, `line_of_business`, `quality_domain`, MEASURE(`compliance_rate`)*100 AS compliance_rate_pct FROM ai_dev_kit_demo_3_catalog.mvp_quality_workshop.quality_measures_mv GROUP BY `measurement_year`, `line_of_business`, `quality_domain` "
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "overview",
+      "displayName": "Overview",
+      "layout": [
+        {
+          "widget": {
+            "name": "title",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# MVP Health Care — Quality Measures (HEDIS) [Workshop]"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "subtitle",
+            "multilineTextboxSpec": {
+              "lines": [
+                "HEDIS quality measure performance — compliance rates, open care gaps, and eligible membership. Source: quality_measures_mv (Unity Catalog metric view)."
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi-compliance",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_kpi",
+                  "fields": [
+                    {
+                      "name": "compliance_rate_pct",
+                      "expression": "SUM(`compliant_members`)/SUM(`eligible_members`)*100"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "compliance_rate_pct",
+                  "displayName": "Compliance Rate (%)",
+                  "format": {
+                    "type": "number-plain",
+                    "decimalPlaces": {
+                      "type": "exact",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Compliance Rate (%)"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi-gaps",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_kpi",
+                  "fields": [
+                    {
+                      "name": "sum(open_care_gaps)",
+                      "expression": "SUM(`open_care_gaps`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(open_care_gaps)",
+                  "displayName": "Total Open Care Gaps"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Total Open Care Gaps"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "kpi-eligible",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_kpi",
+                  "fields": [
+                    {
+                      "name": "sum(eligible_members)",
+                      "expression": "SUM(`eligible_members`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(eligible_members)",
+                  "displayName": "Total Eligible Members"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Total Eligible Members"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "hdr-measure",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Compliance Rate by Measure & Line of Business"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "bar-measure",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_by_measure",
+                  "fields": [
+                    {
+                      "name": "measure_name",
+                      "expression": "`measure_name`"
+                    },
+                    {
+                      "name": "sum(compliance_rate_pct)",
+                      "expression": "SUM(`compliance_rate_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Compliance Rate (%) by Measure"
+              },
+              "mark": {
+                "colors": [
+                  "#FFAB00",
+                  "#00A972",
+                  "#FF3621",
+                  "#8BCAE7",
+                  "#AB4057",
+                  "#99DDB4",
+                  "#FCA4A1",
+                  "#919191",
+                  "#BF7080"
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "measure_name",
+                  "displayName": "Measure",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(compliance_rate_pct)",
+                  "displayName": "Compliance Rate (%)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar-lob",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_by_lob",
+                  "fields": [
+                    {
+                      "name": "line_of_business",
+                      "expression": "`line_of_business`"
+                    },
+                    {
+                      "name": "sum(compliance_rate_pct)",
+                      "expression": "SUM(`compliance_rate_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Compliance Rate (%) by Line of Business"
+              },
+              "mark": {
+                "colors": [
+                  "#FFAB00",
+                  "#00A972",
+                  "#FF3621",
+                  "#8BCAE7",
+                  "#AB4057",
+                  "#99DDB4",
+                  "#FCA4A1",
+                  "#919191",
+                  "#BF7080"
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "line_of_business",
+                  "displayName": "Line of Business",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(compliance_rate_pct)",
+                  "displayName": "Compliance Rate (%)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 6,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "hdr-region",
+            "multilineTextboxSpec": {
+              "lines": [
+                "## Open Care Gaps & Year-over-Year Trend"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 12,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "bar-region",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_by_region",
+                  "fields": [
+                    {
+                      "name": "Region",
+                      "expression": "`Region`"
+                    },
+                    {
+                      "name": "sum(open_care_gaps)",
+                      "expression": "SUM(`open_care_gaps`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "Region",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "y-reversed"
+                    }
+                  },
+                  "displayName": "Region"
+                },
+                "y": {
+                  "fieldName": "sum(open_care_gaps)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Open Care Gaps"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Open Care Gaps by Region"
+              },
+              "mark": {
+                "colors": [
+                  "#FFAB00",
+                  "#00A972",
+                  "#FF3621",
+                  "#8BCAE7",
+                  "#AB4057",
+                  "#99DDB4",
+                  "#FCA4A1",
+                  "#919191",
+                  "#BF7080"
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 13,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar-yoy",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_yoy",
+                  "fields": [
+                    {
+                      "name": "quality_domain",
+                      "expression": "`quality_domain`"
+                    },
+                    {
+                      "name": "measurement_year",
+                      "expression": "`measurement_year`"
+                    },
+                    {
+                      "name": "sum(compliance_rate_pct)",
+                      "expression": "SUM(`compliance_rate_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "frame": {
+                "showTitle": true,
+                "title": "Compliance Rate (%) by Year (split by Quality Domain)"
+              },
+              "mark": {
+                "colors": [
+                  "#FFAB00",
+                  "#00A972",
+                  "#FF3621",
+                  "#8BCAE7",
+                  "#AB4057",
+                  "#99DDB4",
+                  "#FCA4A1",
+                  "#919191",
+                  "#BF7080"
+                ],
+                "layout": "group"
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "measurement_year",
+                  "displayName": "Measurement Year",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(compliance_rate_pct)",
+                  "displayName": "Compliance Rate (%)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "color": {
+                  "fieldName": "quality_domain",
+                  "displayName": "Quality Domain",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "data": {
+                "queryName": "main_query"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 13,
+            "width": 3,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "filters",
+      "displayName": "Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "flt-year",
+            "queries": [
+              {
+                "name": "dashboards/01f165f9b97c1aaead5ed66ff1378f8c/datasets/01f165f9b97c1d4d8024464791048a2d_measurement_year",
+                "query": {
+                  "datasetName": "ds_kpi",
+                  "fields": [
+                    {
+                      "name": "measurement_year",
+                      "expression": "`measurement_year`"
+                    },
+                    {
+                      "name": "measurement_year_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Measurement Year"
+              },
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "measurement_year",
+                    "queryName": "dashboards/01f165f9b97c1aaead5ed66ff1378f8c/datasets/01f165f9b97c1d4d8024464791048a2d_measurement_year"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "flt-lob",
+            "queries": [
+              {
+                "name": "dashboards/01f165f9b97c1aaead5ed66ff1378f8c/datasets/01f165f9b97c1d4d8024464791048a2d_line_of_business",
+                "query": {
+                  "datasetName": "ds_kpi",
+                  "fields": [
+                    {
+                      "name": "line_of_business",
+                      "expression": "`line_of_business`"
+                    },
+                    {
+                      "name": "line_of_business_associativity",
+                      "expression": "COUNT_IF(`associative_filter_predicate_group`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "frame": {
+                "showTitle": true,
+                "title": "Line of Business"
+              },
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "line_of_business",
+                    "queryName": "dashboards/01f165f9b97c1aaead5ed66ff1378f8c/datasets/01f165f9b97c1d4d8024464791048a2d_line_of_business"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 0,
+            "width": 2,
+            "height": 1
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}

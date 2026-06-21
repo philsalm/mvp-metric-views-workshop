@@ -27,6 +27,9 @@ variables:
   n_members:
     description: "Number of synthetic members to generate."
     default: "20000"
+  warehouse_id:
+    description: "SQL warehouse the AI/BI dashboard runs on. Set to a warehouse in your workspace."
+    default: CHANGE-ME
 
 resources:
   jobs:
@@ -42,6 +45,17 @@ resources:
               create_metric_view: ${var.create_metric_view}
               n_members: ${var.n_members}
           # No job_cluster / new_cluster specified -> runs on serverless compute.
+
+  dashboards:
+    mvp_quality_dashboard:
+      display_name: "MVP Health Care — Quality Measures (HEDIS) [Workshop]"
+      file_path: ./dashboards/mvp_quality_measures.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      # NOTE: the dataset queries inside the .lvdash.json reference
+      # ai_dev_kit_demo_3_catalog.mvp_quality_workshop.quality_measures_mv directly
+      # (DAB does not substitute ${var.*} inside the serialized dashboard file).
+      # To deploy against a different catalog/schema, edit the table names in the
+      # .lvdash.json to match your var.catalog / var.schema.
 
 targets:
   dev:
