@@ -13,8 +13,8 @@ health-plan quality dataset. Attendees build a HEDIS-style quality metric view, 
 |---|---|---|
 | `notebooks/00_setup_quality_data.py` | Generates the synthetic star schema (`dim_*`, `fact_measure_compliance`) and, optionally, the reference metric view. | **Admin / facilitator**, once |
 | `notebooks/01_workshop_metric_views.sql` | The hands-on workshop. Seven exercises building a metric view (incl. filters and window functions), plus consume + brainstorm sections. | **Each attendee** |
-| `dashboards/mvp_quality_measures.lvdash.json` | Reference AI/BI dashboard on `quality_measures_mv` (compliance rate, open care gaps, YoY by domain). | Admin (optional) |
-| `databricks.yml` | Optional Databricks Asset Bundle to deploy the setup notebook (job) and the dashboard. | Admin (optional) |
+| `dashboards/mvp_quality_measures.lvdash.json` | Editable source for the reference AI/BI dashboard (compliance rate, open care gaps, YoY by domain). The setup notebook builds the dashboard from this, pointed at your catalog/schema. | Admin (optional) |
+| `databricks.yml` | Optional Databricks Asset Bundle to deploy the setup notebook as a job. | Admin (optional) |
 
 ## Prerequisites
 
@@ -38,6 +38,9 @@ Open `notebooks/00_setup_quality_data.py`, attach a cluster/warehouse on DBR 17.
 - **`schema`** — defaults to `mvp_quality_workshop`.
 - **`create_metric_view`** — `true` creates the finished reference view `quality_measures_mv` (the "answer key");
   set `false` if you want attendees to build it from a blank slate.
+- **`create_dashboard`** — `true` builds the reference AI/BI dashboard, with every dataset pointed at
+  `<catalog>.<schema>.quality_measures_mv` (the catalog/schema you chose above), so it works wherever the data lands.
+- **`warehouse_id`** — warehouse the dashboard runs on; leave blank to let the notebook auto-pick one.
 - **`n_members`** — synthetic member count (default 20,000).
 
 > Alternatively, deploy via the bundle:

@@ -28,8 +28,11 @@ variables:
     description: "Number of synthetic members to generate."
     default: "20000"
   warehouse_id:
-    description: "SQL warehouse the AI/BI dashboard runs on. Set to a warehouse in your workspace."
-    default: CHANGE-ME
+    description: "SQL warehouse the AI/BI dashboard runs on. Blank = the setup notebook auto-picks one."
+    default: ""
+  create_dashboard:
+    description: "Create the reference AI/BI dashboard during setup? The setup notebook builds it pointed at var.catalog/var.schema."
+    default: "true"
 
 resources:
   jobs:
@@ -43,19 +46,16 @@ resources:
               catalog: ${var.catalog}
               schema: ${var.schema}
               create_metric_view: ${var.create_metric_view}
+              create_dashboard: ${var.create_dashboard}
+              warehouse_id: ${var.warehouse_id}
               n_members: ${var.n_members}
           # No job_cluster / new_cluster specified -> runs on serverless compute.
 
-  dashboards:
-    mvp_quality_dashboard:
-      display_name: "MVP Health Care — Quality Measures (HEDIS) [Workshop]"
-      file_path: ./dashboards/mvp_quality_measures.lvdash.json
-      warehouse_id: ${var.warehouse_id}
-      # NOTE: the dataset queries inside the .lvdash.json reference
-      # ai_dev_kit_demo_3_catalog.mvp_quality_workshop.quality_measures_mv directly
-      # (DAB does not substitute ${var.*} inside the serialized dashboard file).
-      # To deploy against a different catalog/schema, edit the table names in the
-      # .lvdash.json to match your var.catalog / var.schema.
+  # The dashboard is created by the setup notebook (00_setup_quality_data), not as a
+  # static bundle resource — that way its datasets are pointed at the same
+  # var.catalog/var.schema the data lands in, instead of a hardcoded catalog.
+  # The editable definition lives in dashboards/mvp_quality_measures.lvdash.json
+  # (the notebook embeds a base64 copy of it).
 
 targets:
   dev:
