@@ -59,6 +59,8 @@ from datetime import date, timedelta
 
 SEED = 42
 rng = np.random.default_rng(SEED)
+TODAY = date.today()
+LATEST_YEAR = max([2024, 2025])
 
 # --- Reference lists (MVP operates in NY / VT) ---
 REGIONS = ["Capital Region", "Central NY", "Hudson Valley", "Western NY", "Vermont"]
@@ -68,6 +70,14 @@ PLAN_TYPES = ["HMO", "PPO", "EPO", "HDHP"]
 PCP_SPECIALTIES = ["Family Medicine", "Internal Medicine", "Pediatrics"]
 OTHER_SPECIALTIES = ["OB/GYN", "Cardiology", "Endocrinology", "Behavioral Health"]
 MEASURE_YEARS = [2024, 2025]
+
+# --- Name + contact pools (used to make members/providers look like real people
+#     so the same data can drive an operational care-gap outreach app, not just analytics) ---
+FIRST_NAMES_F = ["Mary","Patricia","Jennifer","Linda","Elizabeth","Barbara","Susan","Jessica","Sarah","Karen","Nancy","Lisa","Margaret","Sandra","Ashley","Kimberly","Donna","Emily","Michelle","Carol","Amanda","Melissa","Deborah","Stephanie","Rebecca","Laura","Sharon","Cynthia","Kathleen","Amy","Angela","Shirley"]
+FIRST_NAMES_M = ["James","Robert","John","Michael","David","William","Richard","Joseph","Thomas","Charles","Christopher","Daniel","Matthew","Anthony","Mark","Donald","Steven","Paul","Andrew","Joshua","Kenneth","Kevin","Brian","George","Edward","Ronald","Timothy","Jason","Jeffrey","Ryan","Gary","Eric"]
+LAST_NAMES = ["Smith","Johnson","Williams","Brown","Jones","Garcia","Miller","Davis","Rodriguez","Martinez","Hernandez","Lopez","Gonzalez","Wilson","Anderson","Thomas","Taylor","Moore","Jackson","Martin","Lee","Perez","Thompson","White","Harris","Sanchez","Clark","Ramirez","Lewis","Robinson","Walker","Young","Allen","King","Wright","Scott","Torres","Nguyen","Hill","Flores","Green","Adams","Nelson","Baker","Hall","Rivera","Patel","Khan","Cohen","Singh","O'Brien","Kim"]
+CONTACT_PREFS = ["phone", "portal", "email"]
+CONTACT_PREF_WEIGHTS = [0.55, 0.30, 0.15]
 
 # --- dim_plan ---
 plans = []
@@ -93,7 +103,7 @@ for i in range(1, N_PROV + 1):
     spec = rng.choice(PCP_SPECIALTIES) if is_pcp else rng.choice(OTHER_SPECIALTIES)
     prov.append({
         "provider_id": f"PRV{i:04d}",
-        "provider_name": f"Provider {i:04d}",
+        "provider_name": f"Dr. {rng.choice(LAST_NAMES)}",
         "specialty": spec,
         "region": rng.choice(REGIONS),
         "network_status": rng.choice(["In-Network", "Out-of-Network"], p=[0.9, 0.1]),
@@ -135,15 +145,26 @@ for i in range(1, N_MEMBERS + 1):
         age = int(np.clip(rng.normal(28, 18), 0, 80))
     else:
         age = int(np.clip(rng.normal(42, 16), 0, 80))
+    sex = rng.choice(["F", "M"])
+    first = rng.choice(FIRST_NAMES_F if sex == "F" else FIRST_NAMES_M)
+    last = rng.choice(LAST_NAMES)
+    # Member-facing identity + contact, so this data can also drive the outreach app.
+    last_visit = TODAY - timedelta(days=int(rng.triangular(0, 90, 540)))
     members.append({
         "member_id": f"M{i:06d}",
-        "gender": rng.choice(["F", "M"]),
+        "first_name": first,
+        "last_name": last,
+        "gender": sex,
         "age": age,
         "age_band": age_to_band(age),
         "region": rng.choice(REGIONS),
         "line_of_business": lob,
         "plan_id": rng.choice(plans_by_lob[lob]),
         "pcp_provider_id": rng.choice(pcp_ids),
+        "preferred_contact": rng.choice(CONTACT_PREFS, p=CONTACT_PREF_WEIGHTS),
+        "phone": f"(555) {rng.integers(200, 1000)}-{rng.integers(1000, 10000)}",
+        "email": f"{first.lower()}.{last.lower().replace(chr(39), '')}{rng.integers(1, 100)}@example.com",
+        "last_visit_date": last_visit,
         "has_hypertension": bool(rng.random() < (0.35 if age >= 50 else 0.12)),
         "has_diabetes": bool(rng.random() < (0.20 if age >= 50 else 0.06)),
         "had_mh_admit": bool(rng.random() < 0.02),
@@ -183,6 +204,26 @@ for m in member_recs:
             if compliant:
                 start = date(yr, 1, 1)
                 last_service = start + timedelta(days=int(rng.integers(0, 364)))
+
+            # Operational gap attributes — only meaningful for OPEN gaps in the current year.
+            # These feed the care-gap outreach app's `care_gaps` view; the metric view ignores them.
+            due_date = None
+            last_completed = None
+            priority = None
+            source = None
+            if compliant == 0 and yr == LATEST_YEAR:
+                bucket = rng.choice(["overdue", "due_soon", "preventive"], p=[0.40, 0.30, 0.30])
+                if bucket == "overdue":
+                    due_date = TODAY - timedelta(days=int(rng.integers(1, 181)))
+                elif bucket == "due_soon":
+                    due_date = TODAY + timedelta(days=int(rng.integers(1, 31)))
+                else:
+                    due_date = TODAY + timedelta(days=int(rng.integers(31, 366)))
+                priority = bucket
+                if rng.random() < 0.6:  # many members had a prior, now-lapsed completion
+                    last_completed = due_date - timedelta(days=int(rng.integers(330, 731)))
+                source = "HEDIS 2026" if rng.random() < 0.85 else "internal"
+
             rows.append({
                 "member_id": m["member_id"],
                 "plan_id": m["plan_id"],
@@ -192,6 +233,10 @@ for m in member_recs:
                 "eligible_flag": 1,
                 "compliant_flag": compliant,
                 "last_service_date": last_service,
+                "due_date": due_date,
+                "last_completed_date": last_completed,
+                "priority": priority,
+                "source": source,
             })
 fact = pd.DataFrame(rows)
 print(f"dim_plan={len(dim_plan)}  dim_provider={len(dim_provider)}  dim_measure={len(dim_measure)}  "
@@ -220,6 +265,70 @@ write(fact, "fact_measure_compliance")
 spark.sql(f"COMMENT ON TABLE {CATALOG}.{SCHEMA}.fact_measure_compliance IS "
           f"'Synthetic HEDIS-style measure eligibility/compliance. One row per eligible (member, measure, year). NO real PHI.'")
 print("All tables written.")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Operational views for the Care Gap Outreach app
+# MAGIC
+# MAGIC The metric views workshop reads the star schema directly. The **vibe-coding workshop** builds a
+# MAGIC *Care Gap Outreach* app on the **same data**, but an outreach app wants patient-shaped rows, not a
+# MAGIC fact table. These two views reshape the governed star schema into exactly what that app queries —
+# MAGIC so one dataset feeds both a governed metric view (analytics) and an operational app (operations).
+# MAGIC
+# MAGIC | View | Grain | What it is |
+# MAGIC |---|---|---|
+# MAGIC | `patients`  | one row per member | member identity + contact + plan/PCP, keyed by `mrn` (= `member_id`) |
+# MAGIC | `care_gaps` | one row per open gap (current year) | the non-compliant eligible rows, with due date + priority |
+
+# COMMAND ----------
+
+# patients — member identity + contact, joined to plan name and PCP, keyed by mrn.
+spark.sql(f"""
+CREATE OR REPLACE VIEW {CATALOG}.{SCHEMA}.patients AS
+SELECT
+  m.member_id                       AS mrn,
+  m.first_name,
+  m.last_name,
+  m.age,
+  m.gender                          AS sex,
+  prov.provider_name                AS primary_pcp,
+  pln.plan_name                     AS insurance_plan,
+  m.preferred_contact,
+  m.phone,
+  m.email,
+  m.last_visit_date
+FROM {CATALOG}.{SCHEMA}.dim_member m
+LEFT JOIN {CATALOG}.{SCHEMA}.dim_provider prov ON m.pcp_provider_id = prov.provider_id
+LEFT JOIN {CATALOG}.{SCHEMA}.dim_plan     pln  ON m.plan_id         = pln.plan_id
+""")
+
+# care_gaps — open (non-compliant) gaps for the current measurement year, with patient join key.
+spark.sql(f"""
+CREATE OR REPLACE VIEW {CATALOG}.{SCHEMA}.care_gaps AS
+SELECT
+  CONCAT(f.member_id, '-', f.measure_id, '-', f.measurement_year) AS gap_id,
+  f.member_id            AS mrn,
+  f.measure_id           AS measure,
+  meas.measure_name      AS measure_description,
+  f.due_date,
+  f.last_completed_date,
+  f.priority,
+  f.source
+FROM {CATALOG}.{SCHEMA}.fact_measure_compliance f
+JOIN {CATALOG}.{SCHEMA}.dim_measure meas ON f.measure_id = meas.measure_id
+WHERE f.compliant_flag = 0
+  AND f.measurement_year = (SELECT MAX(measurement_year) FROM {CATALOG}.{SCHEMA}.fact_measure_compliance)
+""")
+
+spark.sql(f"COMMENT ON VIEW {CATALOG}.{SCHEMA}.patients IS "
+          f"'One row per member with identity + contact for the Care Gap Outreach app. View over dim_member. NO real PHI.'")
+spark.sql(f"COMMENT ON VIEW {CATALOG}.{SCHEMA}.care_gaps IS "
+          f"'Open care gaps (non-compliant, current year) with due date + priority for the Care Gap Outreach app. View over fact_measure_compliance. NO real PHI.'")
+
+display(spark.sql(f"SELECT measure, priority, COUNT(*) AS gap_count "
+                  f"FROM {CATALOG}.{SCHEMA}.care_gaps GROUP BY measure, priority ORDER BY measure, priority"))
+print("Operational views patients + care_gaps created.")
 
 # COMMAND ----------
 

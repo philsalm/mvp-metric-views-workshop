@@ -72,6 +72,11 @@ A small star schema of synthetic HEDIS-style quality data:
 The central metric is **Compliance Rate** = `SUM(compliant_flag) / COUNT(1)` — the HEDIS rate — with **Open
 Care Gaps** for the non-compliant eligible members.
 
+The setup notebook also creates two **operational views** over the same star schema — `patients` (member
+identity + contact, keyed by `mrn`) and `care_gaps` (open gaps with due date + priority). The metric views
+workshop doesn't use them; they exist so the companion **vibe-coding workshop** can build a Care Gap Outreach
+app on the *same governed dataset* — one source of truth feeding both analytics and an operational app.
+
 ## Troubleshooting
 
 | Symptom | Cause / fix |
